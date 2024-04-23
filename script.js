@@ -16,6 +16,8 @@ let enemiesIntervals = 600;
 let gameOver = false;
 const projectiles = []
 let score = 0;
+const resources = []
+const winningScore = 50
 
 // mouse
 const mouse = {
@@ -97,20 +99,19 @@ function handleProjectiles() {
         projectiles[i].draw();
 
         for (let j = 0; j < enemys.length; j++) {
-            if (enemys[j] && projectiles[i] && collision(projectiles[i] , enemys[j])) {
+            if (enemys[j] && projectiles[i] && collision(projectiles[i], enemys[j])) {
                 enemys[j].health -= projectiles[i].power;
-                projectiles.splice(i,1);
+                projectiles.splice(i, 1);
                 i--;
             }
-            
-        }
 
+        }
 
         if (projectiles[i] && projectiles[i].x > canvas.width - cellsize) {
             projectiles.splice(i, 1);
             i--;
         }
-        console.log('projectiles ==> ', projectiles.length);
+        // console.log('projectiles ==> ', projectiles.length);
     }
 }
 
@@ -124,8 +125,8 @@ class Defender {
     constructor(x, y) {
         this.x = x;
         this.y = y;
-        this.width = cellsize;
-        this.height = cellsize;
+        this.width = cellsize - cellaGap * 2;
+        this.height = cellsize - cellaGap * 2;
         this.shooting = false;
         this.health = 100;
         this.projectiles = [];
@@ -136,24 +137,23 @@ class Defender {
         ctx.fillRect(this.x, this.y, this.width, this.height);
         ctx.fillStyle = 'gold';
         ctx.font = '20px Arial';
-        ctx.fillText(Math.floor(this.health), this.x + 10, this.y + 30); // Adjust positioning within the cell
+        ctx.fillText(Math.floor(this.health), this.x + 10, this.y + 30);
 
     }
     update() {
         if (this.shooting) {
-            
             this.timer++;
             if (this.timer % 100 === 0) {
                 projectiles.push(new Projectile(this.x + 70, this.y + 50))
             }
-        }else{
+        } else {
             this.timer = 0;
         }
     }
 }
 canvas.addEventListener('click', function () {
-    const gridPositionX = mouse.x - (mouse.x % cellsize);
-    const gridPositionY = mouse.y - (mouse.y % cellsize);
+    const gridPositionX = mouse.x - (mouse.x % cellsize) + cellaGap;
+    const gridPositionY = mouse.y - (mouse.y % cellsize) + cellaGap;
     if (gridPositionY < cellsize) {
         return; // Avoid placing anything in the control bar area
     }
@@ -175,7 +175,14 @@ canvas.addEventListener('click', function () {
 function handleDefender() {
     for (let i = 0; i < defenders.length; i++) {
         defenders[i].draw()
-        defenders[i].update()        
+        defenders[i].update()
+
+        if (enemyPositions.indexOf(defenders[i].y) !== -1) {
+            console.log("Shoot");
+            defenders[i].shooting = true;
+        } else {
+            defenders[i].shooting = false;
+        }
 
         for (let j = 0; j < enemys.length; j++) {
             // if (!defenders[i] || !enemys[j]) {
@@ -203,8 +210,8 @@ class Enemy {
     constructor(verticalPossition) {
         this.x = canvas.width;
         this.y = verticalPossition;
-        this.width = cellsize;
-        this.height = cellsize;
+        this.width = cellsize - cellaGap * 2;
+        this.height = cellsize - cellaGap * 2;
         this.speed = Math.random() * 0.2 + 0.4;
         this.movement = this.speed;
         this.health = 100;
@@ -218,7 +225,7 @@ class Enemy {
         ctx.fillRect(this.x, this.y, this.width, this.height);
         ctx.fillStyle = 'gold';
         ctx.font = '20px Arial';
-        ctx.fillText(Math.floor(this.health), this.x + 10, this.y + 30); 
+        ctx.fillText(Math.floor(this.health), this.x + 10, this.y + 30);
     }
 }
 
@@ -232,19 +239,19 @@ function handlEnemies() {
             gameOver = true;
         }
         if (enemys[i].health <= 0) {
-            let gainResources = enemys[i].maxHealth/10;
+            let gainResources = enemys[i].maxHealth / 10;
             numberOfResources += gainResources;
             score += gainResources;
-            // const findThisIndex = enemyPositions.indexOf(enemys[i].y);
-            // enemyPositions.splice(findThisIndex , 1);
-            // enemys.splice(i ,1);
-            // i--;
-            // console.log("pos ==> " , enemyPositions);
+            const findThisIndex = enemyPositions.indexOf(enemys[i].y);
+            enemyPositions.splice(findThisIndex, 1);
+            enemys.splice(i, 1);
+            i--;
+            // console.log("pos ==> ", enemyPositions);
         }
 
     }
-    if (frame % enemiesIntervals === 0) {
-        let verticalPossition = Math.floor(Math.random() * 5 + 1) * cellsize;
+    if (frame % enemiesIntervals === 0 && score < winningScore) {
+        let verticalPossition = Math.floor(Math.random() * 5 + 1) * cellsize + cellaGap;
         enemys.push(new Enemy(verticalPossition))
         enemyPositions.push(verticalPossition);
         if (enemiesIntervals > 120) {
@@ -256,18 +263,63 @@ function handlEnemies() {
 
 
 // resources
+const amounts = [20, 30, 40];
+class Resources {
+    constructor() {
+        this.x = Math.random() * (canvas.width - cellsize);
+        this.y = (Math.floor(Math.random() * 5) + 1) * cellsize + 25;
+        this.width = cellsize * 0.6;
+        this.height = cellsize * 0.6;
+        this.amount = amounts[Math.floor(Math.random() * amounts.length)];
+    }
+    draw() {
+        ctx.fillStyle = 'yellow';
+        ctx.fillRect(this.x, this.y, this.width, this.height);
+        ctx.fillStyle = 'black';
+        ctx.font = '20px Arial';
+        ctx.fillText(this.amount, this.x + 25, this.y + 25)
+    }
+}
+function handleResources() {
+    if (frame % 500 === 0) {
+        resources.push(new Resources())
+    }
+    for (let i = 0; i < resources.length; i++) {
+
+        resources[i].draw();
+        if (resources[i] && mouse.x && mouse.y && collision(resources[i], mouse)) {
+            numberOfResources += resources[i].amount;
+            resources.splice(i, 1);
+            i--;
+        }
+    }
+}
+
+
+
+
+
+
+
 // utilities
 function handleGameStatus() {
     ctx.fillStyle = 'black';
-    ctx.font = '30px Jersey';
+    ctx.font = '30px Arial';
     ctx.fillText('Score : ' + score, 20, 40);
     ctx.fillText('Resources : ' + numberOfResources, 20, 80);
     // console.log("Game Over ==?>>>> " , gameOver);
     if (gameOver) {
         console.log("Game Over ==? ", gameOver);
         ctx.fillStyle = 'black';
-        ctx.font = '60px Jersey';
+        ctx.font = '60px Arial';
         ctx.fillText('GAME OVER', 135, 330);
+    }
+    if (score >= winningScore && enemys.length === 0) {
+        ctx.fillStyle = 'black';
+        ctx.font = '60px Arial';
+        ctx.fillText('LEVEL COMPLETE', 130, 300);
+        ctx.font = '30px Arial';
+        ctx.fillText('You Win with '+ score + ' Points! ', 134, 340)
     }
 }
 function animate() {
@@ -276,6 +328,7 @@ function animate() {
     ctx.fillRect(0, 0, controlBar.width, controlBar.height);
     handleGameGrid()
     handleDefender()
+    handleResources()
     handleProjectiles()
     handlEnemies()
     handleGameStatus()
@@ -299,3 +352,8 @@ function collision(first, second) {
         return false;
     }
 }
+
+
+window.addEventListener('resize', function () {
+    canvasPossiti0on = canvas.getBoundingClientRect();
+})
