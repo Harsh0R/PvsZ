@@ -151,26 +151,6 @@ class Defender {
         }
     }
 }
-canvas.addEventListener('click', function () {
-    const gridPositionX = mouse.x - (mouse.x % cellsize) + cellaGap;
-    const gridPositionY = mouse.y - (mouse.y % cellsize) + cellaGap;
-    if (gridPositionY < cellsize) {
-        return; // Avoid placing anything in the control bar area
-    }
-
-    for (let i = 0; i < defenders.length; i++) {
-
-        if (defenders[i].x === gridPositionX && defenders[i].y === gridPositionY) {
-            return
-        }
-    }
-
-    let defenderCost = 100;
-    if (numberOfResources >= defenderCost) {
-        defenders.push(new Defender(gridPositionX, gridPositionY));
-        numberOfResources -= defenderCost;
-    }
-});
 
 function handleDefender() {
     for (let i = 0; i < defenders.length; i++) {
@@ -203,6 +183,47 @@ function handleDefender() {
     }
 }
 
+
+
+// Floating Message
+const floatingMessages = [];
+class floatingMessage {
+    constructor(value, x, y, size, color) {
+        this.value = value;
+        this.x = x;
+        this.y = y;
+        this.size = size;
+        this.lifeSpan = 0;
+        this.color = color;
+        this.opacity = 1;
+    }
+    update() {
+        this.y -= 0.3;
+        this.lifeSpan += 1;
+        if (this.opacity > 0.01) {
+            this.opacity -= 0.01;
+        }
+    }
+    draw() {
+        ctx.globalAlpha = this.opacity;
+        ctx.fillStyle = this.color;
+        ctx.font = this.size + 'px Arial';
+        ctx.fillText(this.value, this.x, this.y);
+        ctx.globalAlpha = 1;
+    }
+}
+function handleFloatingMessage() {
+    for (let i = 0; i < floatingMessages.length; i++) {
+
+        floatingMessages[i].update();
+        floatingMessages[i].draw();
+        if (floatingMessages[i].lifeSpan >= 50) {
+            floatingMessages.splice(i, 1);
+            i--;
+        }
+
+    }
+}
 
 
 // enemies
@@ -240,6 +261,8 @@ function handlEnemies() {
         }
         if (enemys[i].health <= 0) {
             let gainResources = enemys[i].maxHealth / 10;
+            floatingMessages.push(new floatingMessage( '+' + gainResources , enemys[i].x , enemys[i].y , 30 ,'black'))
+            floatingMessages.push(new floatingMessage( '+' + gainResources , 150 , 40 , 20 ,'gold'))
             numberOfResources += gainResources;
             score += gainResources;
             const findThisIndex = enemyPositions.indexOf(enemys[i].y);
@@ -289,6 +312,8 @@ function handleResources() {
         resources[i].draw();
         if (resources[i] && mouse.x && mouse.y && collision(resources[i], mouse)) {
             numberOfResources += resources[i].amount;
+            floatingMessages.push(new floatingMessage( '+' + resources[i].amount , resources[i].x , resources[i].y , 30 ,'black'))
+            floatingMessages.push(new floatingMessage( '+' + resources[i].amount , 250 , 50 , 20 ,'gold'))
             resources.splice(i, 1);
             i--;
         }
@@ -319,9 +344,43 @@ function handleGameStatus() {
         ctx.font = '60px Arial';
         ctx.fillText('LEVEL COMPLETE', 130, 300);
         ctx.font = '30px Arial';
-        ctx.fillText('You Win with '+ score + ' Points! ', 134, 340)
+        ctx.fillText('You Win with ' + score + ' Points! ', 134, 340)
     }
 }
+
+
+
+
+canvas.addEventListener('click', function () {
+    const gridPositionX = mouse.x - (mouse.x % cellsize) + cellaGap;
+    const gridPositionY = mouse.y - (mouse.y % cellsize) + cellaGap;
+    if (gridPositionY < cellsize) {
+        return; // Avoid placing anything in the control bar area
+    }
+
+    for (let i = 0; i < defenders.length; i++) {
+
+        if (defenders[i].x === gridPositionX && defenders[i].y === gridPositionY) {
+            return
+        }
+    }
+
+    let defenderCost = 100;
+    if (numberOfResources >= defenderCost) {
+        defenders.push(new Defender(gridPositionX, gridPositionY));
+        numberOfResources -= defenderCost;
+    } else {
+        floatingMessages.push(new floatingMessage('Need more resources', mouse.x, mouse.y, 15, 'blue'))
+    }
+});
+
+
+
+
+
+
+
+
 function animate() {
     ctx.clearRect(0, 0, canvas.width, canvas.height)
     ctx.fillStyle = 'green';
@@ -332,6 +391,7 @@ function animate() {
     handleProjectiles()
     handlEnemies()
     handleGameStatus()
+    handleFloatingMessage()
     // ctx.fillText('Resources : ' + numberOfResources  ,20 ,55)
     frame++;
     if (!gameOver) {
